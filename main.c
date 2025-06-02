@@ -12,54 +12,15 @@
 #include "libraries/sensirion_i2c_hal.h"
 #include "libraries/sgp40_i2c.h"
 #include "libraries/sht3x_i2c.h"
+#include "libraries/VOC_essentials.h"
 
 
 
 #define LOG_DIR "../logs"
-#define CONFIG_FILE "../config.txt"
 
-/* Check if needed, no longer have svm41 so maybe no offset? */
-void get_timestamp(char* buffer, size_t size) {
-    time_t now = time(NULL);
-    strftime(buffer, size, "%Y-%m-%d_%H:%M:%S", localtime(&now));
-}
 
-// Function to read config file and extract parameters
-int read_config(int* oversample_count, float* humidity_offset) {
-    FILE* config_file = fopen(CONFIG_FILE, "r");
-    if (config_file == NULL) {
-        fprintf(stderr, "Config file not found, using default values.\n");
-        return -1; // Return error if file not found
-    }
 
-    char line[128];
-    while (fgets(line, sizeof(line), config_file)) {
-        char key[64], value[64];
 
-        // Skip empty lines and comments
-        if (line[0] == '\0' || line[0] == '#') continue;
-
-        // Parse key-value pairs
-        if (sscanf(line, "%63s = %63s", key, value) == 2) {
-            if (strcmp(key, "oversample_count") == 0) {
-                *oversample_count = atoi(value);
-                if (*oversample_count <= 0) {
-                    fprintf(stderr, "Invalid oversample_count in config, using default value of 5.\n");
-                    *oversample_count = 5;
-                }
-            } else if (strcmp(key, "humidity_offset") == 0) {
-                *humidity_offset = atof(value);
-                if (*humidity_offset < 0) {
-                    fprintf(stderr, "Invalid humidity_offset in config, using default value of 2.8.\n");
-                    *humidity_offset = 2.8;
-                }
-            }
-        }
-    }
-
-    fclose(config_file);
-    return 0; // Success
-}
 
 
 int main(int argc, char* argv[]) {
