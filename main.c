@@ -50,7 +50,7 @@ int main(int argc, char* argv[]) {
     if (ftell(logfile) == 0) {
         fprintf(logfile, "Timestamp");
         for (int i = 0; i < MAX_PORTS; i++) {
-            fprintf(logfile, ",T%d,H%d,VOC%d", i + 1, i + 1, i + 1);
+            fprintf(logfile, ",T%d,H%d,VOC%d", i, i , i);
         }
         fprintf(logfile, "\n");
     }
