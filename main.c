@@ -70,7 +70,6 @@ int main(int argc, char* argv[]) {
 
         for (int port = 0; port < MAX_PORTS; port++) {
             mux_port_select(port);
-
             if (!mux_i2c_detect()) {
                 if (measure_oversampled(oversample_count, sht31_humidity_offset, &temperature_c, &humidity_p, &raw_voc) == 0) {
                     snprintf(csv_row + strlen(csv_row), sizeof(csv_row) - strlen(csv_row),
@@ -88,7 +87,6 @@ int main(int argc, char* argv[]) {
 
         fprintf(logfile, "%s\n", csv_row);
         fflush(logfile);
-        sensirion_i2c_hal_sleep_usec(1000000);
     }
 
     fclose(logfile);

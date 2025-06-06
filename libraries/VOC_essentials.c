@@ -65,6 +65,7 @@ int16_t measure_oversampled(int oversample_count, float humidity_offset, float* 
         float t = 0, h = 0;
         uint16_t voc = 0;
         error = single_measure(&h, &t, &voc, humidity_offset);
+        sensirion_i2c_hal_sleep_usec(1000000);
         if (error) return error;
 
         temp_sum += t;
