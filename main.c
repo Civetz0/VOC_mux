@@ -74,6 +74,11 @@ int main(int argc, char* argv[]) {
                 if (measure_oversampled(oversample_count, sht31_humidity_offset, &temperature_c, &humidity_p, &raw_voc) == 0) {
                     snprintf(csv_row + strlen(csv_row), sizeof(csv_row) - strlen(csv_row),
                              ",%.2f,%.2f,%u", temperature_c, humidity_p, raw_voc);
+
+                    // Print to console only when data is valid
+                    printf("Port %d | Temp: %.2f °C | Humidity: %.2f %% | VOC: %u ticks\n",
+                           port, temperature_c, humidity_p, raw_voc);
+
                 } else {
                     fprintf(stderr, "Measurement failed on port %d\n", port);
                     snprintf(csv_row + strlen(csv_row), sizeof(csv_row) - strlen(csv_row),
