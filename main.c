@@ -46,11 +46,12 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
+    // Write CSV header if file is empty
     fseek(logfile, 0, SEEK_END);
     if (ftell(logfile) == 0) {
         fprintf(logfile, "Timestamp");
         for (int i = 0; i < MAX_PORTS; i++) {
-            fprintf(logfile, ",T%d,H%d,VOC%d", i, i , i);
+            fprintf(logfile, ",T%d,H%d,VOC%d", i, i, i);
         }
         fprintf(logfile, "\n");
     }
@@ -59,39 +60,18 @@ int main(int argc, char* argv[]) {
     sht3x_init(SHT31_I2C_ADDR_44);
     mux_init_address(TCA_ADDR_70);
 
-    float temperature_c = 0;
-    float humidity_p = 0;
-    uint16_t raw_voc = 0;
+    SensorAccumulator accum[MAX_PORTS];
+    reset_accumulators(accum);
 
     while (1) {
-        char csv_row[1024] = "";
-        get_timestamp(timestamp, sizeof(timestamp));
-        snprintf(csv_row + strlen(csv_row), sizeof(csv_row) - strlen(csv_row), "%s", timestamp);
-
-        for (int port = 0; port < MAX_PORTS; port++) {
-            mux_port_select(port);
-            if (mux_i2c_detect()) {
-                if (measure_oversampled(oversample_count, sht31_humidity_offset, &temperature_c, &humidity_p, &raw_voc) == 0) {
-                    snprintf(csv_row + strlen(csv_row), sizeof(csv_row) - strlen(csv_row),
-                             ",%.2f,%.2f,%u", temperature_c, humidity_p, raw_voc);
-
-                    // Print to console only when data is valid
-                    printf("Port %d | Temp: %.2f °C | Humidity: %.2f %% | VOC: %u ticks\n",
-                           port, temperature_c, humidity_p, raw_voc);
-
-                } else {
-                    fprintf(stderr, "Measurement failed on port %d\n", port);
-                    snprintf(csv_row + strlen(csv_row), sizeof(csv_row) - strlen(csv_row),
-                             ",NaN,NaN,NaN");
-                }
-            } else {
-                snprintf(csv_row + strlen(csv_row), sizeof(csv_row) - strlen(csv_row),
-                         ",NaN,NaN,NaN");
-            }
+        for (int i = 0; i < oversample_count; i++) {
+            sample_all_ports(accum, sht31_humidity_offset);
+            sensirion_i2c_hal_sleep_usec(1000000); // 1 second delay per sample
         }
 
-        fprintf(logfile, "%s\n", csv_row);
-        fflush(logfile);
+        get_timestamp(timestamp, sizeof(timestamp));
+        finalize_averages(logfile, accum, oversample_count, timestamp);
+        reset_accumulators(accum);
     }
 
     fclose(logfile);

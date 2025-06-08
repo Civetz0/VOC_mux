@@ -19,10 +19,10 @@ int16_t mux_i2c_detect() {
     for (uint8_t addr = 0; addr <= 127; addr++) {
         if (addr == _mux_addr) continue;
         if (sensirion_i2c_hal_write(addr, NULL, 0) == 0) {
-            return 1; // Device detected
+            return 0; // Device detected
         }
     }
-    return 0; // No devices found
+    return 1; // No devices found
 }
 
 void get_timestamp(char* buffer, size_t size) {
@@ -92,4 +92,50 @@ int16_t single_measure(float* humidity, float* temperature, uint16_t* raw_voc, f
 
     error = sgp40_measure_raw_signal(h_ticks, t_ticks, raw_voc);
     return error;
+}
+
+void sample_all_ports(SensorAccumulator accum[], float humidity_offset) {
+    for (int port = 0; port < MAX_PORTS; port++) {
+        mux_port_select(port);
+
+        if (!mux_i2c_detect()) {
+            float t = 0, h = 0;
+            uint16_t voc = 0;
+            if (single_measure(&h, &t, &voc, humidity_offset) == 0) {
+                accum[port].temp_sum += t;
+                accum[port].hum_sum += h;
+                accum[port].voc_sum += voc;
+                accum[port].sample_count++;
+
+                printf("Port %d | Temp: %.2f °C | Humidity: %.2f %% | VOC: %u ticks\n", port, t, h, voc);
+            }
+        }
+    }
+}
+
+void finalize_averages(FILE* logfile, SensorAccumulator accum[], int oversample_count, const char* timestamp) {
+    char csv_row[1024] = "";
+    snprintf(csv_row, sizeof(csv_row), "%s", timestamp);
+
+    for (int port = 0; port < MAX_PORTS; port++) {
+        if (accum[port].sample_count == oversample_count) {
+            float avg_temp = accum[port].temp_sum / oversample_count;
+            float avg_hum = accum[port].hum_sum / oversample_count;
+            uint16_t avg_voc = accum[port].voc_sum / oversample_count;
+
+            snprintf(csv_row + strlen(csv_row), sizeof(csv_row) - strlen(csv_row),
+                     ",%.2f,%.2f,%u", avg_temp, avg_hum, avg_voc);
+        } else {
+            snprintf(csv_row + strlen(csv_row), sizeof(csv_row) - strlen(csv_row), ",NaN,NaN,NaN");
+        }
+    }
+
+    fprintf(logfile, "%s\n", csv_row);
+    fflush(logfile);
+}
+
+void reset_accumulators(SensorAccumulator accum[]) {
+    for (int i = 0; i < MAX_PORTS; i++) {
+        accum[i] = (SensorAccumulator){0};
+    }
 }
